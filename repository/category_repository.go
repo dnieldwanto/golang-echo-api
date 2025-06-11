@@ -37,32 +37,46 @@ func (c *categoryRepository) Delete(tx *gorm.DB, id int) error {
 }
 
 // FindAll implements domains.CategoryRepository.
-func (repository *categoryRepository) FindAll(request dto.SearchCategoryDto) (result []model.Category, err error) {
+func (repository *categoryRepository) FindAll(request dto.SearchCategoryDto) (model.CategoryPage, error) {
+	var countQuery = "SELECT COUNT(*) as total FROM wallpaper.categories c WHERE c.is_active IS TRUE"
 	var query = "SELECT * FROM wallpaper.categories c WHERE c.is_active IS TRUE"
+	var condition string
+	var count uint
+	var categories []model.Category
 	params := []interface{}{}
 
 	if request.ID != 0 {
-		query += " AND c.id = ?"
+		condition += " AND c.id = ?"
 		params = append(params, request.ID)
 	}
 
 	if request.Name != "" {
-		query += " AND c.category_name ILIKE ?"
+		condition += " AND c.category_name ILIKE ?"
 		params = append(params, "%"+request.Name+"%")
 	}
 
 	if request.From != "" && request.To != "" {
-		query += " AND c.created_at BETWEEN ? AND ?"
+		condition += " AND c.created_at BETWEEN ? AND ?"
 		params = append(params, request.From, request.To)
 	}
 
+	countQuery += condition
+	repository.db.Raw(countQuery, params...).Scan(&count)
+	log.Println("Count Query =>", countQuery)
+
 	offset := (request.Page - 1) * request.Limit
-	query += " ORDER BY c.id ASC LIMIT ? OFFSET ?"
+	query = query + condition + " ORDER BY c.id ASC LIMIT ? OFFSET ?"
 	params = append(params, request.Limit, offset)
 
 	log.Println("Final Query =>", query)
 
-	repository.db.Raw(query, params...).Scan(&result)
+	repository.db.Raw(query, params...).Scan(&categories)
+
+	result := model.CategoryPage{
+		Category: categories,
+		Count:    count,
+	}
+
 	return result, nil
 }
 

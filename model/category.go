@@ -9,3 +9,8 @@ type Category struct {
 	CreatedAt    sql.NullTime `json:"createdAt" gorm:"column:created_at"`
 	CreatedBy    string       `json:"createdBy" gorm:"column:created_by"`
 }
+
+type CategoryPage struct {
+	Category []Category
+	Count    uint
+}

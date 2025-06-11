@@ -5,6 +5,7 @@ import (
 	"golang-echo-api/domains"
 	"golang-echo-api/dto"
 	"golang-echo-api/model"
+	"math"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,7 +17,7 @@ type categoryService struct {
 }
 
 // FindCategory implements domains.CategoryService.
-func (service *categoryService) FindCategory(request dto.SearchCategoryDto) ([]dto.CategoryResponseDto, error) {
+func (service *categoryService) FindCategory(request dto.SearchCategoryDto) (dto.Paginate[dto.CategoryResponseDto], error) {
 	var categoryDto []dto.CategoryResponseDto
 
 	if request.From != "" && request.To != "" {
@@ -24,12 +25,12 @@ func (service *categoryService) FindCategory(request dto.SearchCategoryDto) ([]d
 
 		parseFrom, err := time.Parse(layout, request.From)
 		if err != nil {
-			return nil, err
+			return dto.Paginate[dto.CategoryResponseDto]{}, err
 		}
 
 		parseTo, err := time.Parse(layout, request.To)
 		if err != nil {
-			return nil, err
+			return dto.Paginate[dto.CategoryResponseDto]{}, err
 		}
 
 		startOfDay := parseFrom.Format("2006-01-02 15:04:05")
@@ -40,10 +41,10 @@ func (service *categoryService) FindCategory(request dto.SearchCategoryDto) ([]d
 	}
 	category, err := service.categoryRepository.FindAll(request)
 	if err != nil {
-		return nil, err
+		return dto.Paginate[dto.CategoryResponseDto]{}, err
 	}
 
-	for _, data := range category {
+	for _, data := range category.Category {
 		categoryDto = append(categoryDto, dto.CategoryResponseDto{
 			ID:           data.ID,
 			CategoryName: data.CategoryName,
@@ -52,7 +53,13 @@ func (service *categoryService) FindCategory(request dto.SearchCategoryDto) ([]d
 		})
 	}
 
-	return categoryDto, nil
+	return dto.Paginate[dto.CategoryResponseDto]{
+		TotalData:   category.Count,
+		TotalPage:   uint(math.Ceil(float64(category.Count) / float64(request.Limit))),
+		CurrentData: uint(len(category.Category)),
+		CurrentPage: uint(request.Page),
+		Content:     categoryDto,
+	}, nil
 }
 
 // Delete implements domains.CategoryService.
