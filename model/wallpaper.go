@@ -16,3 +16,8 @@ type Wallpaper struct {
 	UpdatedAt   sql.NullTime   `json:"updatedAt" gorm:"column:updated_at"`
 	UpdatedBy   sql.NullString `json:"updatedBy" gorm:"column:updated_by"`
 }
+
+type WallpaperPage struct {
+	Wallpapers []Wallpaper
+	Count      uint
+}

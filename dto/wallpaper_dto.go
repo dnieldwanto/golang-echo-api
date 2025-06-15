@@ -16,3 +16,12 @@ type WallpaperDto struct {
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
+
+type FindWallpaperDto struct {
+	ID       int    `query:"id"`
+	Category string `query:"category"`
+	Search   string `query:"search"`
+	Page     int    `query:"page"`
+	Limit    int    `query:"limit"`
+	SortBy   string `query:"sortBy"`
+}

@@ -7,6 +7,7 @@ import (
 	"golang-echo-api/dto"
 	"golang-echo-api/model"
 	"io"
+	"math"
 	"mime/multipart"
 	"os"
 	"time"
@@ -20,6 +21,51 @@ type wallpaperService struct {
 	categoryRepository  domains.CategoryRepository
 }
 
+// FindAll implements domains.WallpaperService.
+func (service *wallpaperService) FindAll(request dto.FindWallpaperDto) (dto.Paginate[dto.WallpaperDto], error) {
+	if request.Page == 0 {
+		request.Page = 1
+	}
+	if request.Limit == 0 {
+		request.Limit = 10
+	}
+	var wallpaperDto []dto.WallpaperDto
+
+	wallpapers, err := service.wallpaperRepository.FindAll(request)
+	if err != nil {
+		return dto.Paginate[dto.WallpaperDto]{}, err
+	}
+
+	for _, data := range wallpapers.Wallpapers {
+		category, err := service.categoryRepository.FindById(int(data.CategoryId))
+		if err != nil {
+			return dto.Paginate[dto.WallpaperDto]{}, nil
+		}
+
+		if category.ID == 0 {
+			return dto.Paginate[dto.WallpaperDto]{}, errors.New("Category not found")
+		}
+
+		wallpaperDto = append(wallpaperDto, dto.WallpaperDto{
+			ID:          data.ID,
+			Title:       data.Title,
+			Description: data.Description,
+			Filename:    data.Filename,
+			Category:    category.CategoryName,
+			CreatedAt:   data.CreatedAt.Time.String(),
+			UpdatedAt:   data.UpdatedAt.Time.String(),
+		})
+	}
+
+	return dto.Paginate[dto.WallpaperDto]{
+		TotalData:   wallpapers.Count,
+		TotalPage:   uint(math.Ceil(float64(wallpapers.Count) / float64(request.Limit))),
+		CurrentData: uint(len(wallpapers.Wallpapers)),
+		CurrentPage: uint(request.Page),
+		Content:     wallpaperDto,
+	}, nil
+}
+
 // Update implements domains.WallpaperService.
 func (service *wallpaperService) Update(id int, file *multipart.FileHeader, request dto.CreateWallpaperDto) (result dto.WallpaperDto, err error) {
 	err = service.db.Transaction(func(tx *gorm.DB) error {
@@ -29,6 +75,10 @@ func (service *wallpaperService) Update(id int, file *multipart.FileHeader, requ
 		}
 
 		if file != nil {
+			err := os.Remove("uploads/" + wallpaper.Filename)
+			if err != nil {
+				return err
+			}
 			wallpaper.Filename = file.Filename
 		}
 

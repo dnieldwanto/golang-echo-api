@@ -22,6 +22,7 @@ func NewWallpaperRoutes(group *echo.Group, wallpaperService domains.WallpaperSer
 	wallpaperApi := group.Group("/wallpapers")
 	wallpaperApi.POST("", wallpaperRoutes.CreateWallpaper)
 	wallpaperApi.PUT("/:id", wallpaperRoutes.UpdateWallpaper)
+	wallpaperApi.GET("", wallpaperRoutes.FindAllData)
 }
 
 func (wallpaperRoutes wallpaperRoutes) CreateWallpaper(c echo.Context) error {
@@ -71,4 +72,19 @@ func (wallpaperRoutes wallpaperRoutes) UpdateWallpaper(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, utils.GenerateResponse(http.StatusOK, "Update Wallpaper Successfully", wallpaper))
+}
+
+func (wallpaperRoutes wallpaperRoutes) FindAllData(c echo.Context) error {
+	var request dto.FindWallpaperDto
+
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, utils.GenerateResponse(http.StatusBadRequest, err.Error(), nil))
+	}
+
+	wallpapers, err := wallpaperRoutes.wallpaperService.FindAll(request)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, utils.GenerateResponse(http.StatusInternalServerError, err.Error(), nil))
+	}
+
+	return c.JSON(http.StatusOK, utils.GenerateResponse(http.StatusOK, "OK", wallpapers))
 }
